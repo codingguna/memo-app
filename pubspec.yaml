@@ -35,6 +35,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
+  flutter_launcher_icons:
+    android: true
+    ios: true
+    image_path: "//assets/ic_launcher.png"
   # Add custom fonts if needed
   # fonts:
   #   - family: CustomFont
