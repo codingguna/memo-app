@@ -29,7 +29,15 @@ jobs:
         run: flutter clean
 
       - name: Analyze project
-        run: flutter analyze
+         run: |
+          flutter analyze > analysis.log || true
+          cat analysis.log
+          if grep -q "error •" analysis.log; then
+            echo "❌ Flutter analysis failed"
+            exit 1
+          else
+            echo "✅ Flutter analysis passed"
+          fi
 
       - name: Build AAB (Android App Bundle)
         run: flutter build appbundle --release --shrink
