@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../core/theme/app_theme.dart';
 import 'auth/login_screen.dart';
 import 'home/home_wrapper.dart';
 

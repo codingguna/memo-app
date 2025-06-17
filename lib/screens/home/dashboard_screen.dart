@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/api_service.dart';
-import '../../models/hospital_models.dart';
 import '../../components/switch_dialogs.dart';
 
 class DashboardScreen extends StatefulWidget {
