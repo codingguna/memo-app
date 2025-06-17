@@ -21,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeApp() async {
-    await Future.delayed(const Duration(seconds: 2)); // Show splash for 2 seconds
+   // await Future.delayed(const Duration(seconds: 2)); // Show splash for 2 seconds
     
     if (mounted) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -48,32 +48,32 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryColor,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.local_hospital_rounded,
-              size: 100,
-              color: Colors.white,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Hospital Management',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
+    //   backgroundColor: AppTheme.primaryColor,
+    //   body: Center(
+    //     child: Column(
+    //       mainAxisAlignment: MainAxisAlignment.center,
+    //       children: [
+    //         Icon(
+    //           Icons.local_hospital_rounded,
+    //           size: 100,
+    //           color: Colors.white,
+    //         ),
+    //         const SizedBox(height: AppSpacing.lg),
+    //         Text(
+    //           'Hospital Management',
+    //           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+    //             color: Colors.white,
+    //             fontWeight: FontWeight.bold,
+    //           ),
+    //         ),
+    //         const SizedBox(height: AppSpacing.xl),
+    //         const CircularProgressIndicator(
+    //           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+    //         ),
+    //       ],
+    //     ),
+    //   ),
+    body: SizedBox.shrink(),);
   }
 
 }
