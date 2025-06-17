@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String baseURL =
-      'https://rcgn7s2v-8000.inc1.devtunnels.ms/'; // Change this to your API URL
+      'https://rcgn7s2v-8000.inc1.devtunnels.ms'; // Change this to your API URL
 
   // Singleton pattern
   static final ApiService _instance = ApiService._internal();
