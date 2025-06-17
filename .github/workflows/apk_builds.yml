@@ -29,7 +29,7 @@ jobs:
         run: flutter clean
 
       - name: Analyze project
-         run: |
+        run: |
           flutter analyze > analysis.log || true
           cat analysis.log
           if grep -q "error •" analysis.log; then
