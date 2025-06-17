@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String baseURL =
-      'https://rcgn7s2v-8000.inc1.devtunnels.ms'; // Change this to your API URL
+      'https://guna25.pythonanywhere.com'; // Change this to your API URL
 
   // Singleton pattern
   static final ApiService _instance = ApiService._internal();
@@ -74,51 +74,52 @@ class ApiService {
       throw Exception('HTTP Error: ${response.statusCode} - ${response.body}');
     }
   }
-  
+
   // Add this method to your ApiService class:
 
-Future<List<dynamic>> _makeListRequest(
-  String endpoint, {
-  String method = 'GET',
-  Map<String, dynamic>? body,
-}) async {
-  final url = Uri.parse('$baseURL$endpoint');
-  final headers = await _getHeaders();
+  Future<List<dynamic>> _makeListRequest(
+    String endpoint, {
+    String method = 'GET',
+    Map<String, dynamic>? body,
+  }) async {
+    final url = Uri.parse('$baseURL$endpoint');
+    final headers = await _getHeaders();
 
-  http.Response response;
+    http.Response response;
 
-  switch (method.toUpperCase()) {
-    case 'GET':
-      response = await http.get(url, headers: headers);
-      break;
-    case 'POST':
-      response = await http.post(
-        url,
-        headers: headers,
-        body: body != null ? jsonEncode(body) : null,
-      );
-      break;
-    default:
-      throw Exception('Unsupported HTTP method for list: $method');
-  }
-
-  if (response.statusCode >= 200 && response.statusCode < 300) {
-    if (response.body.isEmpty) {
-      return [];
+    switch (method.toUpperCase()) {
+      case 'GET':
+        response = await http.get(url, headers: headers);
+        break;
+      case 'POST':
+        response = await http.post(
+          url,
+          headers: headers,
+          body: body != null ? jsonEncode(body) : null,
+        );
+        break;
+      default:
+        throw Exception('Unsupported HTTP method for list: $method');
     }
-    final decoded = jsonDecode(response.body);
-    if (decoded is List) {
-      return decoded;
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) {
+        return [];
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) {
+        return decoded;
+      } else {
+        throw Exception(
+            'Expected list response but got: ${decoded.runtimeType}');
+      }
     } else {
-      throw Exception('Expected list response but got: ${decoded.runtimeType}');
+      throw Exception('HTTP Error: ${response.statusCode} - ${response.body}');
     }
-  } else {
-    throw Exception('HTTP Error: ${response.statusCode} - ${response.body}');
   }
-}
 
   // Auth endpoints
-  
+
   Future<Map<String, dynamic>> login(
       String phoneNumber, String password) async {
     return await _makeRequest(
@@ -173,6 +174,7 @@ Future<List<dynamic>> _makeListRequest(
   Future<Map<String, dynamic>> getUser(int hospitalId, int userId) async {
     return await _makeRequest('/api/hospitals/$hospitalId/users/$userId/');
   }
+
   // Users endpoints
   Future<Map<String, dynamic>> getUsers(int hospitalId) async {
     return await _makeRequest('/api/hospitals/$hospitalId/users/');
@@ -232,10 +234,8 @@ Future<List<dynamic>> _makeListRequest(
   // Blocks endpoints
 // Suggested code may be subject to a license. Learn more: ~LicenseLog:1605316048.
   Future<List<dynamic>> getBlocks(int hospitalId) async {
-  return await _makeListRequest('/api/hospitals/$hospitalId/blocks/');
-}
-
-
+    return await _makeListRequest('/api/hospitals/$hospitalId/blocks/');
+  }
 
   Future<Map<String, dynamic>> createBlock(
       int hospitalId, Map<String, dynamic> blockData) async {
@@ -288,10 +288,11 @@ Future<List<dynamic>> _makeListRequest(
         method: 'DELETE');
   }
 
-  
-  Future<List<dynamic>> getWards(int hospitalId, {int? block, int? floor}) async {
-    final endpoint = '/api/hospitals/$hospitalId/wards/${block != null && floor != null ? '?block=$block&floor=$floor' : ''}';
-    return await _makeListRequest(endpoint);  
+  Future<List<dynamic>> getWards(int hospitalId,
+      {int? block, int? floor}) async {
+    final endpoint =
+        '/api/hospitals/$hospitalId/wards/${block != null && floor != null ? '?block=$block&floor=$floor' : ''}';
+    return await _makeListRequest(endpoint);
   }
 
 // Block/Ward switching endpoints
