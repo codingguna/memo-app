@@ -18,15 +18,29 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _setupFCMTokenRefreshListener(); // Set up token refresh listener
+    _setupFCMTokenRefreshListener();
   }
 
-  void _setupFCMTokenRefreshListener() {
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-      await ApiService()
-          .updateFCMToken(newToken, null); // optional: pass blockId
-    });
-  }
+ void _setupFCMTokenRefreshListener() {
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    final hospitalId = prefs.getInt('hospitalId');
+    final userId = prefs.getInt('userId');
+    final role = prefs.getString('role');
+    final institutionId = prefs.getString('institutionId');
+
+    if (hospitalId != null && userId != null && role != null && institutionId != null) {
+      await ApiService().updateFCMToken(
+        newToken,
+        hospitalId,
+        userId,
+        role,
+        institutionId,
+      );
+    }
+  });
+}
+
 
   Future<void> _login() async {
     final phone = _phoneController.text.trim();
@@ -44,23 +58,35 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await ApiService().login(phone, password);
 
-      if (response.containsKey('token')) {
+      if (response.containsKey('token') &&
+          response.containsKey('user_id') &&
+          response.containsKey('hospital_id') &&
+          response.containsKey('role') &&
+          response.containsKey('institution_id')) {
+
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('authToken', response['token']);
+           await prefs.setString('authToken', response['token']);
+           await prefs.setInt('userId', response['user_id']);
+           await prefs.setInt('hospitalId', response['hospital_id']);
+           await prefs.setString('role', response['role']);
+           await prefs.setString('institutionId', response['institution_id']); // 👈 store as string
 
-        // ✅ Get and send current FCM token
-        final fcmToken = await FirebaseMessaging.instance.getToken();
-        if (fcmToken != null) {
-          await ApiService()
-              .updateFCMToken(fcmToken, null); // pass blockId if needed
-        }
+       final fcmToken = await FirebaseMessaging.instance.getToken();
+       if (fcmToken != null) {
+          await ApiService().updateFCMToken(
+            fcmToken,
+            response['hospital_id'],
+            response['user_id'],
+            response['role'],
+            response['institution_id'], // 👈 use as string
+    );
+  }
 
-        // ✅ Navigate to home or dashboard
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/home');
         }
       } else {
-        _showMessage("Invalid phone number or password.");
+        _showMessage("Invalid response from server.");
       }
     } catch (e) {
       _showMessage("Login error: $e");
