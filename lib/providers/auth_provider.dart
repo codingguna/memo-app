@@ -110,27 +110,45 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Update FCM token
-  Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
-    try {
-      await _apiService.updateFCMToken(fcmToken, blockId);
-      
-      // Update local user data
-      if (_user != null) {
-        _user = _user!.copyWith(
-          fcmToken: fcmToken,
-          fcmTokenUpdatedAt: DateTime.now(),
-          currentBlockId: blockId ?? _user!.currentBlockId,
-        );
-        await _saveUserData(_user!);
-        notifyListeners();
-      }
-      
-      return true;
-    } catch (e) {
-      _setError('Failed to update FCM token: ${e.toString()}');
+Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final hospitalId = prefs.getInt('hospitalId') ?? _hospital?.id;
+    final userId = _user?.id;
+    final role = _user?.role;
+    final institutionId = _user?.institutionId;
+
+    if (hospitalId == null || userId == null || role == null || institutionId == null) {
+      _setError('Missing required user data to update FCM token');
       return false;
     }
+
+    await _apiService.updateFCMToken(
+      fcmToken,
+      hospitalId,
+      userId,
+      role,
+      institutionId,
+    );
+
+    // Update local user data
+    if (_user != null) {
+      _user = _user!.copyWith(
+        fcmToken: fcmToken,
+        fcmTokenUpdatedAt: DateTime.now(),
+        currentBlockId: blockId ?? _user!.currentBlockId,
+      );
+      await _saveUserData(_user!);
+      notifyListeners();
+    }
+
+    return true;
+  } catch (e) {
+    _setError('Failed to update FCM token: ${e.toString()}');
+    return false;
   }
+}
+
 
   // Update current block
   Future<bool> updateCurrentBlock(int blockId, String blockName) async {
