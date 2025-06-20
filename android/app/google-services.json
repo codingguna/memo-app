@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "65808753050",
+    "project_id": "click-notifi",
+    "storage_bucket": "click-notifi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:65808753050:android:0993f2a554029c6a599a23",
+        "android_client_info": {
+          "package_name": "com.example.click_notifi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaql3eBs__-S-YgX0JixLUB3M1Vt0j5Oc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
