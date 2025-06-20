@@ -1,7 +1,11 @@
+// lib/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:hospital_management/services/api_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../core/theme/app_theme.dart';
+import '../home/home_wrapper.dart';
+import 'set_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,141 +15,239 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool isLoading = false;
+  final _formKey = GlobalKey<FormState>();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
-    _setupFCMTokenRefreshListener();
+    _listenForTokenRefresh();
   }
 
-  void _setupFCMTokenRefreshListener() {
+  void _listenForTokenRefresh() {
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-      final prefs = await SharedPreferences.getInstance();
-      final hospitalId = prefs.getInt('hospitalId');
-      final userId = prefs.getInt('userId');
-      final role = prefs.getString('role');
-      final institutionId = prefs.getString('institutionId');
-
-      if (hospitalId != null &&
-          userId != null &&
-          role != null &&
-          institutionId != null) {
-        await ApiService().updateFCMToken(
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticated &&
+          authProvider.user != null &&
+          authProvider.hospital != null) {
+        await authProvider.updateFCMToken(
           newToken,
-          hospitalId,
-          userId,
-          role,
-          institutionId,
+          blockId: authProvider.user!.currentBlockId,
         );
       }
     });
   }
 
-  Future<void> _login() async {
-    final phone = _phoneController.text.trim();
-    final password = _passwordController.text.trim();
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
-    if (phone.isEmpty || password.isEmpty) {
-      _showMessage("Please enter phone and password.");
-      return;
-    }
+  void _login() async {
+    if (_formKey.currentState!.validate()) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    setState(() {
-      isLoading = true;
-    });
+      final success = await authProvider.login(
+        _phoneController.text.trim(),
+        _passwordController.text,
+      );
 
-    try {
-      final response = await ApiService().login(phone, password);
-      print(response);
-      if (response.containsKey('token') &&
-          response.containsKey('user_id') &&
-          response.containsKey('hospital_id') &&
-          response.containsKey('role') &&
-          response.containsKey('institution_id')) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('authToken', response['token']);
-        await prefs.setInt('userId', response['user_id']);
-        await prefs.setInt('hospitalId', response['hospital_id']);
-        await prefs.setString('role', response['role']);
-        await prefs.setString(
-            'institutionId', response['institution_id']); // 👈 store as string
-
+      if (success) {
+        // ✅ Get FCM token
         final fcmToken = await FirebaseMessaging.instance.getToken();
-        if (fcmToken != null) {
-          await ApiService().updateFCMToken(
+
+        // ✅ Update it to server
+        if (fcmToken != null &&
+            authProvider.user != null &&
+            authProvider.hospital != null) {
+          await authProvider.updateFCMToken(
             fcmToken,
-            response['hospital_id'],
-            response['user_id'],
-            response['role'],
-            response['institution_id'], // 👈 use as string
+            blockId: authProvider.user!.currentBlockId,
           );
         }
 
+        // ✅ Navigate to home
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeWrapper()),
+          );
         }
-      } else {
-        _showMessage("Invalid response from server.");
-      }
-    } catch (e) {
-      _showMessage("Login error: $e");
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
       }
     }
   }
 
-  void _showMessage(String message) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Login Info"),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
+  void _navigateToSetPassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const SetPasswordScreen()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: 'Phone Number'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
-            ),
-            const SizedBox(height: 24),
-            isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _login,
-                    child: const Text("Login"),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            children: [
+              const SizedBox(height: AppSpacing.xxl),
+              Icon(Icons.local_hospital_rounded,
+                  size: 80, color: AppTheme.primaryColor),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Hospital Management',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Sign in to continue',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        Text('Login',
+                            style:
+                                Theme.of(context).textTheme.headlineSmall),
+                        const SizedBox(height: AppSpacing.lg),
+                        TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone Number',
+                            prefixIcon: Icon(Icons.phone),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your phone number';
+                            }
+                            if (value.length < 10) {
+                              return 'Please enter a valid phone number';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your password';
+                            }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Consumer<AuthProvider>(
+                          builder: (context, auth, _) {
+                            return ElevatedButton(
+                              onPressed: auth.isLoading ? null : _login,
+                              child: auth.isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                                Colors.white),
+                                      ),
+                                    )
+                                  : const Text('Login'),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        TextButton(
+                          onPressed: _navigateToSetPassword,
+                          child: const Text('Set New Password'),
+                        ),
+                        Consumer<AuthProvider>(
+                          builder: (context, auth, _) {
+                            if (auth.error != null) {
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.only(top: AppSpacing.md),
+                                child: Container(
+                                  padding: const EdgeInsets.all(
+                                      AppSpacing.sm),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.errorColor
+                                        .withOpacity(0.1),
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.md),
+                                    border: Border.all(
+                                        color: AppTheme.errorColor
+                                            .withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.error_outline,
+                                          color: AppTheme.errorColor),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          auth.error!,
+                                          style: TextStyle(
+                                              color: AppTheme.errorColor),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.close),
+                                        onPressed: auth.clearError,
+                                        color: AppTheme.errorColor,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-          ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-}
+} is this correct or not 

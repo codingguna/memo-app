@@ -109,20 +109,24 @@ class AuthProvider with ChangeNotifier {
     _setLoading(false);
   }
 
-  // Update FCM token
+// Update FCM token after login or on token refresh
 Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    final hospitalId = prefs.getInt('hospitalId') ?? _hospital?.id;
-    final userId = _user?.id;
-    final role = _user?.role;
-    final institutionId = _user?.institutionId;
 
+    // Get required values from SharedPreferences and fallback to in-memory data
+    final int? hospitalId = prefs.getInt('hospitalId') ?? _hospital?.id;
+    final int? userId = _user?.id;
+    final String? role = _user?.role;
+    final String? institutionId = _user?.institutionId;
+
+    // Validation
     if (hospitalId == null || userId == null || role == null || institutionId == null) {
       _setError('Missing required user data to update FCM token');
       return false;
     }
 
+    // Call the API to update FCM token
     await _apiService.updateFCMToken(
       fcmToken,
       hospitalId,
@@ -131,13 +135,14 @@ Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
       institutionId,
     );
 
-    // Update local user data
+    // Update local user model with new FCM token and timestamp
     if (_user != null) {
       _user = _user!.copyWith(
         fcmToken: fcmToken,
         fcmTokenUpdatedAt: DateTime.now(),
         currentBlockId: blockId ?? _user!.currentBlockId,
       );
+
       await _saveUserData(_user!);
       notifyListeners();
     }
@@ -148,6 +153,7 @@ Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
     return false;
   }
 }
+
 
 
   // Update current block
