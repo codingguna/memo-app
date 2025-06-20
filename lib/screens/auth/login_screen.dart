@@ -21,26 +21,28 @@ class _LoginScreenState extends State<LoginScreen> {
     _setupFCMTokenRefreshListener();
   }
 
- void _setupFCMTokenRefreshListener() {
-  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-    final prefs = await SharedPreferences.getInstance();
-    final hospitalId = prefs.getInt('hospitalId');
-    final userId = prefs.getInt('userId');
-    final role = prefs.getString('role');
-    final institutionId = prefs.getString('institutionId');
+  void _setupFCMTokenRefreshListener() {
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      final prefs = await SharedPreferences.getInstance();
+      final hospitalId = prefs.getInt('hospitalId');
+      final userId = prefs.getInt('userId');
+      final role = prefs.getString('role');
+      final institutionId = prefs.getString('institutionId');
 
-    if (hospitalId != null && userId != null && role != null && institutionId != null) {
-      await ApiService().updateFCMToken(
-        newToken,
-        hospitalId,
-        userId,
-        role,
-        institutionId,
-      );
-    }
-  });
-}
-
+      if (hospitalId != null &&
+          userId != null &&
+          role != null &&
+          institutionId != null) {
+        await ApiService().updateFCMToken(
+          newToken,
+          hospitalId,
+          userId,
+          role,
+          institutionId,
+        );
+      }
+    });
+  }
 
   Future<void> _login() async {
     final phone = _phoneController.text.trim();
@@ -57,30 +59,30 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await ApiService().login(phone, password);
-
+      print(response);
       if (response.containsKey('token') &&
           response.containsKey('user_id') &&
           response.containsKey('hospital_id') &&
           response.containsKey('role') &&
           response.containsKey('institution_id')) {
-
         final prefs = await SharedPreferences.getInstance();
-           await prefs.setString('authToken', response['token']);
-           await prefs.setInt('userId', response['user_id']);
-           await prefs.setInt('hospitalId', response['hospital_id']);
-           await prefs.setString('role', response['role']);
-           await prefs.setString('institutionId', response['institution_id']); // 👈 store as string
+        await prefs.setString('authToken', response['token']);
+        await prefs.setInt('userId', response['user_id']);
+        await prefs.setInt('hospitalId', response['hospital_id']);
+        await prefs.setString('role', response['role']);
+        await prefs.setString(
+            'institutionId', response['institution_id']); // 👈 store as string
 
-       final fcmToken = await FirebaseMessaging.instance.getToken();
-       if (fcmToken != null) {
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
           await ApiService().updateFCMToken(
             fcmToken,
             response['hospital_id'],
             response['user_id'],
             response['role'],
             response['institution_id'], // 👈 use as string
-    );
-  }
+          );
+        }
 
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/home');
