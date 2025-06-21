@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (hospitalId != null && roleName != null) {
         final roles = await authProvider.apiService.getRoles(hospitalId);
         final matchedRole = roles.firstWhere(
-          (r) => r['name'] == roleName,
+          (role) => role['name'].toString().toUpperCase() == roleName.toUpperCase(),
           orElse: () => null,
         );
         if (matchedRole != null) {
@@ -83,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (hospitalId != null && roleName != null) {
           final roles = await authProvider.apiService.getRoles(hospitalId);
           final matchedRole = roles.firstWhere(
-            (r) => r['name'] == roleName,
+            (role) => role['name'].toString().toUpperCase() == roleName.toUpperCase(),
             orElse: () => null,
             );
           if (matchedRole != null) {
