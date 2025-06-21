@@ -29,11 +29,27 @@ class _LoginScreenState extends State<LoginScreen> {
   void _listenForTokenRefresh() {
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
+       // ✅ Get roleId from role name
+      final hospitalId = authProvider.hospital?.id;
+      final roleName = authProvider.user?.role;
+
+      int? roleId;
+      if (hospitalId != null && roleName != null) {
+        final roles = await authProvider.apiService.getRoles(hospitalId);
+        final matchedRole = roles.firstWhere(
+          (r) => r['name'] == roleName,
+          orElse: () => null,
+        );
+        if (matchedRole != null) {
+          roleId = matchedRole['id'];
+        }
+      }
       if (authProvider.isAuthenticated &&
           authProvider.user != null &&
           authProvider.hospital != null) {
         await authProvider.updateFCMToken(
           newToken,
+          roleId:roleId,
           blockId: authProvider.user!.currentBlockId,
         );
       }
@@ -59,13 +75,28 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success) {
         // ✅ Get FCM token
         final fcmToken = await FirebaseMessaging.instance.getToken();
+         // ✅ Get roleId from role name
+        final hospitalId = authProvider.hospital?.id;
+        final roleName = authProvider.user?.role;
 
+        int? roleId;
+        if (hospitalId != null && roleName != null) {
+          final roles = await authProvider.apiService.getRoles(hospitalId);
+          final matchedRole = roles.firstWhere(
+            (r) => r['name'] == roleName,
+            orElse: () => null,
+            );
+          if (matchedRole != null) {
+            roleId = matchedRole['id'];
+          }
+        }
         // ✅ Update it to server
         if (fcmToken != null &&
             authProvider.user != null &&
             authProvider.hospital != null) {
           await authProvider.updateFCMToken(
             fcmToken,
+            roleId:roleId,
             blockId: authProvider.user!.currentBlockId,
           );
         }
