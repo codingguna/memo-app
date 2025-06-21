@@ -4,7 +4,7 @@ class Hospital {
   final String? geolocationPoint;
   final int? radius;
   final String? address;
-
+ 
   Hospital({
     required this.id,
     required this.name,
