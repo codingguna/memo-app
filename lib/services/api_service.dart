@@ -159,13 +159,13 @@ class ApiService {
 
   // Update FCM token
   Future<Map<String, dynamic>> updateFCMToken(
-      String fcmToken, int hospitalId, int userId, int role, String institutionId) async {
+      String fcmToken, int hospitalId, int userId, int roleId, String institutionId) async {
     return await _makeRequest(
       '/api/hospitals/$hospitalId/users/$userId/',
       method: 'PATCH',
       body: {
         'institution_id':institutionId,
-        'role':role,
+        'role':roleId,
         'fcm_token': fcmToken,
       },
     );

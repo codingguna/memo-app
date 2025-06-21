@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/user.dart';
 import '../models/hospital.dart';
 import '../models/auth_response.dart';
@@ -48,7 +49,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      _setError('Failed to initialize authentication: ${e.toString()}');
+      _setError('Failed to initialize authentication: \${e.toString()}');
       await logout();
     } finally {
       _setLoading(false);
@@ -65,9 +66,29 @@ class AuthProvider with ChangeNotifier {
       final authResponse = AuthResponse.fromJson(response);
 
       await _saveAuthData(authResponse);
+
+      // Fetch roles and get roleId from role name
+      final rolesResponse = await _apiService.getRoles(authResponse.hospital.id);
+      final roles = rolesResponse['roles'] as List<dynamic>;
+      final matchedRole = roles.firstWhere(
+        (role) => role['name'] == authResponse.user.role,
+        orElse: () => null,
+      );
+
+      if (matchedRole == null || matchedRole['id'] == null) {
+        throw Exception('Role ID not found for role: \${authResponse.user.role}');
+      }
+
+      final roleId = matchedRole['id'];
+
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        await updateFCMToken(fcmToken, blockId: authResponse.user.currentBlockId, roleId: roleId);
+      }
+
       return true;
     } catch (e) {
-      _setError('Login failed: ${e.toString()}');
+      _setError('Login failed: \${e.toString()}');
       return false;
     } finally {
       _setLoading(false);
@@ -86,7 +107,7 @@ class AuthProvider with ChangeNotifier {
       await _saveAuthData(authResponse);
       return true;
     } catch (e) {
-      _setError('Set password failed: ${e.toString()}');
+      _setError('Set password failed: \${e.toString()}');
       return false;
     } finally {
       _setLoading(false);
@@ -97,64 +118,53 @@ class AuthProvider with ChangeNotifier {
   Future<void> logout() async {
     _setLoading(true);
     try {
-      // Call API logout endpoint
       await _apiService.logout();
     } catch (e) {
-      // Continue with logout even if API call fails
-      debugPrint('Logout API call failed: $e');
+      debugPrint('Logout API call failed: \$e');
     }
 
-    // Clear local storage
     await _clearAuthData();
     _setLoading(false);
   }
 
-// Update FCM token after login or on token refresh
-Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
+  // Update FCM token
+  Future<bool> updateFCMToken(String fcmToken, {int? blockId, required int roleId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    // Get required values from SharedPreferences and fallback to in-memory data
-    final int? hospitalId = prefs.getInt('hospitalId') ?? _hospital?.id;
-    final int? userId = _user?.id;
-    final String? role = _user?.role;
-    final String? institutionId = _user?.institutionId;
+      final int? hospitalId = prefs.getInt('hospitalId') ?? _hospital?.id;
+      final int? userId = _user?.id;
+      final String? institutionId = _user?.institutionId;
 
-    // Validation
-    if (hospitalId == null || userId == null || role == null || institutionId == null) {
-      _setError('Missing required user data to update FCM token');
-      return false;
-    }
+      if (hospitalId == null || userId == null || institutionId == null) {
+        _setError('Missing required user data to update FCM token');
+        return false;
+      }
 
-    // Call the API to update FCM token
-    await _apiService.updateFCMToken(
-      fcmToken,
-      hospitalId,
-      userId,
-      role,
-      institutionId,
-    );
-
-    // Update local user model with new FCM token and timestamp
-    if (_user != null) {
-      _user = _user!.copyWith(
-        fcmToken: fcmToken,
-        fcmTokenUpdatedAt: DateTime.now(),
-        currentBlockId: blockId ?? _user!.currentBlockId,
+      await _apiService.updateFCMToken(
+        fcmToken,
+        hospitalId,
+        userId,
+        roleId,
+        institutionId,
       );
 
-      await _saveUserData(_user!);
-      notifyListeners();
+      if (_user != null) {
+        _user = _user!.copyWith(
+          fcmToken: fcmToken,
+          fcmTokenUpdatedAt: DateTime.now(),
+          currentBlockId: blockId ?? _user!.currentBlockId,
+        );
+        await _saveUserData(_user!);
+        notifyListeners();
+      }
+
+      return true;
+    } catch (e) {
+      _setError('Failed to update FCM token: \${e.toString()}');
+      return false;
     }
-
-    return true;
-  } catch (e) {
-    _setError('Failed to update FCM token: ${e.toString()}');
-    return false;
   }
-}
-
-
 
   // Update current block
   Future<bool> updateCurrentBlock(int blockId, String blockName) async {
@@ -169,7 +179,7 @@ Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
       }
       return true;
     } catch (e) {
-      _setError('Failed to update current block: ${e.toString()}');
+      _setError('Failed to update current block: \${e.toString()}');
       return false;
     }
   }
@@ -177,7 +187,7 @@ Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
   // Private methods
   Future<void> _saveAuthData(AuthResponse authResponse) async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     _token = authResponse.token;
     _user = authResponse.user;
     _hospital = authResponse.hospital;
@@ -223,38 +233,33 @@ Future<bool> updateFCMToken(String fcmToken, {int? blockId}) async {
     notifyListeners();
   }
 
-  // Clear error manually
   void clearError() {
     _clearError();
   }
 
   Future<bool> fetchUserData() async {
-      _setLoading(true);
-      _clearError();
+    _setLoading(true);
+    _clearError();
 
-      try {
-        if (_user == null || _hospital == null) {
-          throw Exception('User or hospital data not available');
-        }
-
-        // Fetch only the current user's data
-        final response = await _apiService.getUser(_hospital!.id, _user!.id);
-        
-        // Update local user data
-        final updatedUser = User.fromJson(response);
-        _user = updatedUser;
-        
-        // Save to shared preferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user', jsonEncode(updatedUser.toJson()));
-
-        notifyListeners();
-        return true;
-      } catch (e) {
-        _setError('Failed to fetch user data: ${e.toString()}');
-        return false;
-      } finally {
-        _setLoading(false);
+    try {
+      if (_user == null || _hospital == null) {
+        throw Exception('User or hospital data not available');
       }
+
+      final response = await _apiService.getUser(_hospital!.id, _user!.id);
+      final updatedUser = User.fromJson(response);
+      _user = updatedUser;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user', jsonEncode(updatedUser.toJson()));
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('Failed to fetch user data: \${e.toString()}');
+      return false;
+    } finally {
+      _setLoading(false);
     }
+  }
 }
