@@ -14,6 +14,7 @@ class AuthProvider with ChangeNotifier {
   String? _token;
   bool _isLoading = false;
   String? _error;
+  final ApiService apiService = ApiService();
 
   final ApiService _apiService = ApiService();
 
