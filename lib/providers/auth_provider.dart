@@ -65,14 +65,13 @@ class AuthProvider with ChangeNotifier {
     try {
       final response = await _apiService.login(phoneNumber, password);
       final authResponse = AuthResponse.fromJson(response);
-      final rolename=authResponse.user.role;
       await _saveAuthData(authResponse);
 
       // Fetch roles and get roleId from role name
       final rolesResponse = await _apiService.getRoles(authResponse.hospital.id);
       final roles = rolesResponse['roles'] as List<dynamic>;
       final matchedRole = roles.firstWhere(
-        (role) => role['name'].toString().toUpperCase() == roleName.toUpperCase(),
+        (role) => role['name'].toString().toUpperCase() == authResponse.user.role.toUpperCase(),
         orElse: () => null,
       );
 

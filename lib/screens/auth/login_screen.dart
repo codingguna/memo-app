@@ -36,7 +36,8 @@ class _LoginScreenState extends State<LoginScreen> {
       int? roleId;
       if (hospitalId != null && roleName != null) {
         final roles = await authProvider.apiService.getRoles(hospitalId);
-        final matchedRole = roles.firstWhere(
+        final roleslist = roles['roles'] as List<dynamic>;
+        final matchedRole = roleslist.firstWhere(
           (role) => role['name'].toString().toUpperCase() == roleName.toUpperCase(),
           orElse: () => null,
         );
@@ -44,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
           roleId = matchedRole['id'];
         }
       }
-      if (authProvider.isAuthenticated &&
+      if (roleId!=null && authProvider.isAuthenticated &&
           authProvider.user != null &&
           authProvider.hospital != null) {
         await authProvider.updateFCMToken(
@@ -82,7 +83,8 @@ class _LoginScreenState extends State<LoginScreen> {
         int? roleId;
         if (hospitalId != null && roleName != null) {
           final roles = await authProvider.apiService.getRoles(hospitalId);
-          final matchedRole = roles.firstWhere(
+          final rolesLi = roles['roles'] as List<dynamic>;
+          final matchedRole = rolesLi.firstWhere(
             (role) => role['name'].toString().toUpperCase() == roleName.toUpperCase(),
             orElse: () => null,
             );
@@ -91,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         }
         // ✅ Update it to server
-        if (fcmToken != null &&
+        if (roleId!=null && fcmToken != null &&
             authProvider.user != null &&
             authProvider.hospital != null) {
           await authProvider.updateFCMToken(
